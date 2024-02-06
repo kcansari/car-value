@@ -10,3 +10,10 @@ export class CreateUserDto {
   @IsString()
   username: string;
 }
+export class SingInUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  password: string;
+}

@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Session,
+  UseGuards,
 } from '@nestjs/common';
 import { CreateUserDto, SingInUserDto } from './dtos/create-user.dto';
 import { UsersService } from './users.service';
@@ -15,6 +16,7 @@ import { Serialize } from 'src/interceptors/serialize.interceptor';
 import { UserDto } from './dtos/user.dto';
 import { AuthService } from './AuthService';
 import { SessionService } from './session.service';
+import { AuthGuard } from 'src/guards/auth.guard';
 
 @Controller('auth')
 @Serialize(UserDto)
@@ -44,6 +46,7 @@ export class UsersController {
   }
 
   @Get('/:id')
+  @UseGuards(AuthGuard)
   findUser(@Param('id') id: string) {
     return this.usersService.findOne(parseInt(id));
   }

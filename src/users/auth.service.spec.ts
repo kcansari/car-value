@@ -13,21 +13,43 @@ let fakePasswordService: Partial<PasswordService>;
 
 describe('AuthService', () => {
   beforeEach(async () => {
+    const users: User[] = [];
     // Createa a fake copy of the users service
     fakeUsersService = {
-      find: () => Promise.resolve([]),
-      create: (email: string, password: string, username: string) =>
-        Promise.resolve({ id: 1, email, password, username } as User),
+      find: (email: string) => {
+        const hasUser = users.filter((user) => user.email === email);
+        return Promise.resolve(hasUser);
+      },
+      create: (email: string, password: string, username: string) => {
+        const user = {
+          id: Math.floor(Math.random() * 999999),
+          email,
+          password,
+          username,
+        } as User;
+        users.push(user);
+        return Promise.resolve(user);
+      },
     };
 
     fakePasswordService = {
       hashPassword: (password: string) =>
         Promise.resolve('salt' + '.' + password),
-      checkPassword: () => Promise.resolve(true),
+      checkPassword: (password, userPassword) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const [_, storedHash] = userPassword.split('.');
+        const correctPw = Boolean(password === storedHash);
+        return Promise.resolve(correctPw);
+      },
     };
 
     fakeEmailService = {
-      ensureUniqueEmail: () => Promise.resolve(),
+      ensureUniqueEmail: async (email: string) => {
+        const hasEmail = users.some((user) => user.email === email);
+        if (hasEmail) {
+          throw new BadRequestException('Email in use');
+        }
+      },
     };
     const module = await Test.createTestingModule({
       providers: [
@@ -71,9 +93,11 @@ describe('AuthService', () => {
     expect(hash).toBeDefined();
   });
   it('throws an error if user signs up with email that is in use', async () => {
-    fakeEmailService.ensureUniqueEmail = () => {
-      throw new BadRequestException('Email in use');
-    };
+    await service.signup({
+      email: 'a',
+      password: '1',
+      username: 'test',
+    });
     expect(
       service.signup({
         email: 'a',
@@ -93,16 +117,11 @@ describe('AuthService', () => {
   });
 
   it('throws if an invalid password is provided', async () => {
-    fakeUsersService.find = () =>
-      Promise.resolve([
-        {
-          id: 1,
-          email: 'sdad@dsada.com',
-          password: '21312',
-          username: 'sdas',
-        } as User,
-      ]);
-    fakePasswordService.checkPassword = () => Promise.resolve(false);
+    await service.signup({
+      email: '1231',
+      password: '2322',
+      username: '231',
+    });
 
     expect(
       service.signin({
@@ -113,18 +132,13 @@ describe('AuthService', () => {
   });
 
   it('return a user if correct password is provided', async () => {
-    fakeUsersService.find = () =>
-      Promise.resolve([
-        {
-          id: 1,
-          email: 'sdad@dsada.com',
-          password: '21312',
-          username: 'sdas',
-        } as User,
-      ]);
-    fakePasswordService.checkPassword = () => Promise.resolve(true);
+    await service.signup({
+      email: 'sdad2@dsada.com',
+      password: '21312',
+      username: 'asda',
+    });
     const user = await service.signin({
-      email: 'sdad@dsada.com',
+      email: 'sdad2@dsada.com',
       password: '21312',
     });
     expect(user).toBeDefined();
